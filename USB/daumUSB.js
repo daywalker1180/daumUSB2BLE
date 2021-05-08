@@ -287,6 +287,7 @@ function daumUSB () {
             // set to 0 if rpm is 0 to avoid rolling if stand still in applications like zwift or fullgaz
             if (global.globalmode !== 'ERG' && rpm === 0) {
               data.power = power;
+              global.globalpower_daum = data.power; // global variables used, because I cannot code ;)
             } else {
               power = (states[5]);
               if (!isNaN(power) && (power >= config.daumRanges.min_power && power <= config.daumRanges.max_power)) {

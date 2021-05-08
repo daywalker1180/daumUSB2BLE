@@ -70,7 +70,12 @@ class DaumBLE extends EventEmitter {
     bleno.on('rssiUpdate', (rssi) => {
       console.log(`[daumBLE.js] - ${this.name} - rssiUpdate: ${rssi}`);
       self.emit('key', `[daumBLE.js] - ${this.name} - rssiUpdate: ${rssi}`);
-    })
+    });
+
+    bleno.on('disconnect', (clientAddress) => {
+			console.log(`[${this.name} disconnect] Client: ${clientAddress}`);
+			self.emit('disconnect', clientAddress);
+		})   
   }
 
   // notifiy BLE services

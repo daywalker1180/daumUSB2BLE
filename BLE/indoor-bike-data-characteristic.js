@@ -1,6 +1,6 @@
 const Bleno = require('bleno');
 const config = require('config-yml');
-const Logger = require('./logger');
+const Logger = require('../logger');
 
 const logger = new Logger('indoor-bike-data-characteristic.js');
 
@@ -9,14 +9,14 @@ class IndoorBikeDataCharacteristic extends Bleno.Characteristic {
     super({
       uuid: '2AD2',
       value: null,
-      properties: ['notify'],
-      descriptors: [
+      properties: ['notify']//,
+      /* descriptors: [
         new Bleno.Descriptor({
           // Client Characteristic Configuration
           uuid: '2902',
-          value: Buffer.alloc(2)
+          value: Buffer.alloc(2, '01')
         })
-      ]
+      ]*/
     });
     this._updateValueCallback = null;
   }

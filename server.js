@@ -12,6 +12,8 @@ const DaumUSB = require('./USB/daumUSB');
 const DaumSIM = require('./daumSIM');
 const DaumBLE = config.mock.BLE ? require('./mock/daumBLE') : require('./BLE/daumBLE');
 
+var dataToSend = null;
+
 const logger = new Logger('server.js');
 
 // instantiate hardware switch for shifting up/down gears
@@ -35,6 +37,8 @@ global.globalcrr_ble = config.globals.crr_ble;    // set once to have simulation
 global.globalcw_ble = config.globals.cw_ble;      // set once to have simulation available without BLE connected to apps
 global.globalmode = config.globals.mode;          // set this as default start mode here; in this mode ,ergoFACE is going to startup
 global.globalswitch = config.globals.switch;      // set this as default start mode here; in this mode ,ergoFACE is going to startup
+
+
 
 // server path specifications
 app.use('/public/css', express.static(path.join(__dirname, 'public/css')));
@@ -62,6 +66,7 @@ process.on('SIGINT', () => {
   logger.debug('detected SIGINT: initiate shutdown...');
   daumUSB.stop();
   server.close();
+  process.exit();
 });
 
 // /////////////////////////////////////////////////////////////////////////
@@ -244,6 +249,8 @@ process.on('SIGINT', () => {
 // /////////////////////////////////////////////////////////////////////////
 // Bike information transfer to BLE & Webserver
 // /////////////////////////////////////////////////////////////////////////
+var connectedCount = 0;
+
 daumBLE.on('key', string => {
   logger.debug('error: ' + string);
   io.emit('key', '[server.js] - ' + string);
@@ -252,6 +259,46 @@ daumBLE.on('key', string => {
 daumBLE.on('error', string => {
   logger.debug('error: ' + string);
   io.emit('error', '[server.js] - ' + string);
+});
+
+daumBLE.on('accept', (client) => {
+	connectedCount++;
+	//oled.displayBLE('Connected');
+  if (connectedCount > 0) {
+    dataToSend = { 
+      rpm: global.globalrpm_daum, 
+      power: global.globalpower_daum,
+      speed: global.globalspeed_daum
+    };
+    daumBLE.notifyFTMS(dataToSend);
+    fillInTimer = setTimeout(sendFillInData, 800);
+  }
+});
+
+function sendFillInData() {
+	if (!dataToSend || (connectedCount < 1)) {
+		console.log("Aborting nothing to send");
+	}
+  dataToSend = { 
+    rpm: global.globalrpm_daum, 
+    power: global.globalpower_daum,
+    speed: global.globalspeed_daum
+  };
+	console.log("Sending fill in data" + JSON.stringify(dataToSend));
+	daumBLE.notifyFTMS(dataToSend);
+	fillInTimer = setTimeout(sendFillInData, 800);
+}
+
+daumBLE.on('disconnect', (client) => {
+	connectedCount--;
+  if(connectedCount < 0) {
+    connectedCount = 0;
+  }
+  if (fillInTimer) {
+    clearTimeout(fillInTimer);
+    fillInTimer = null;
+  }
+	//oled.displayBLE('Disconnected');
 });
 
 daumObs.on('error', string => {
@@ -312,7 +359,7 @@ function serverCallback (message, ...args) {
       if (args.length > 0) {
         const watt = args[0];
         daumUSB.setPower(watt);
-        logger.debug('Bike in ERG Mode - set Power to: ', watt);
+        logger.debug('Bike in ERG Mode - set Power to: ' + watt + 'W');
         io.emit('raw', '[server.js] - Bike in ERG Mode - set Power to: ' + watt);
         io.emit('control', 'ERG MODE');
         success = true;

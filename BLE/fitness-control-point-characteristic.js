@@ -46,14 +46,14 @@ class FitnessControlPoint extends Bleno.Characteristic {
     super({
       uuid: '2AD9',
       value: null,
-      properties: ['write'],
-      descriptors: [
+      properties: ['indicate', 'write']//,
+      /*descriptors: [
         new Bleno.Descriptor({
           // Client Characteristic Configuration
           uuid: '2902',
           value: Buffer.alloc(2)
         })
-      ]
+      ] */
     });
 
     this.underControl = false;
@@ -144,10 +144,10 @@ class FitnessControlPoint extends Bleno.Characteristic {
         const crr = data.readUInt8(5) * 0.0001;
         const cw = data.readUInt8(6) * 0.01;
 
-        logger.debug('setIndoorBikeSimulationParameters - windspeed: ', windspeed);
-        logger.debug('setIndoorBikeSimulationParameters - grade: ', grade);
-        logger.debug('setIndoorBikeSimulationParameters - crr: ', crr);
-        logger.debug('setIndoorBikeSimulationParameters - cw: ', cw);
+        logger.debug('setIndoorBikeSimulationParameters - windspeed: ' + windspeed);
+        logger.debug('setIndoorBikeSimulationParameters - grade: ' + grade);
+        logger.debug('setIndoorBikeSimulationParameters - crr: ' + crr);
+        logger.debug('setIndoorBikeSimulationParameters - cw: ' + cw);
 
         if (this.serverCallback('simulation', windspeed, grade, crr, cw)) {
           callback(this.buildResponse(state, ResultCode.success))

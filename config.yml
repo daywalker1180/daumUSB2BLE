@@ -1,18 +1,18 @@
 DEBUG:
-    daumUSB: true
-    server: true
-    daumSIM: true
-    BLE: false
+    daumUSB: false
+    server: false
+    daumSIM: false
+    BLE: true
     level: 3  # DEBUG
 
 mock:
     daumUSB: false
-    BLE: true
+    BLE: false
 
 globals:
     speed_daum: 0
     rpm_daum: 0
-    gear_daum: 1
+    gear_daum: 10
     power_daum: 0
     simpower_daum: 0
     windspeed_ble: 0
@@ -37,7 +37,7 @@ port:
 intervals:
     openPort: 10000
     getAdress: 1000
-    runData: 3000
+    runData: 1000
     restart: 1000
     flushNext: 2000
 
@@ -47,7 +47,7 @@ timeouts:
 
 simulation:
     maxGrade: 16
-    mRider: 65
+    mRider: 87
     mBike: 9
     g: 9.8067
     p: 1.225
@@ -98,7 +98,7 @@ gpio:
     shiftDownPin: 17
 
 daumCockpit:
-    productId: '6001'
+    productId: '2303'
     adress: '00'
     gotAdressSuccess: false
 
@@ -149,7 +149,7 @@ daumRanges:
       min_program: 0
       max_program: 79
       min_power: 5      # 5 * 5 = 25 Watt
-      max_power: 160    # 160 * 5 = 800 Watt
+      max_power: 80    # 160 * 5 = 800 Watt
       power_factor: 5
       rpm_threshold: 100
       power_threshold: 80

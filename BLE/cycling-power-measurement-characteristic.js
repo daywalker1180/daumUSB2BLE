@@ -1,6 +1,6 @@
 const Bleno = require('bleno');
 const config = require('config-yml');
-const Logger = require('./logger');
+const Logger = require('../logger');
 
 const logger = new Logger('cycling-power-measurement-characteristic.js');
 
@@ -12,7 +12,7 @@ class CyclingPowerMeasurementCharacteristic extends Bleno.Characteristic {
     super({
       uuid: '2A63',
       value: null,
-      properties: ['notify'],
+      properties: ['notify']/*,
       descriptors: [
         new Bleno.Descriptor({
           uuid: '2901',
@@ -28,7 +28,7 @@ class CyclingPowerMeasurementCharacteristic extends Bleno.Characteristic {
           uuid: '2903',
           value: Buffer.alloc(2)
         })
-      ]
+      ]*/
     });
     this._updateValueCallback = null;
   }

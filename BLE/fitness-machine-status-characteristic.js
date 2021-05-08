@@ -1,6 +1,6 @@
 const Bleno = require('bleno');
 const config = require('config-yml');
-const Logger = require('./logger');
+const Logger = require('../logger');
 
 const logger = new Logger('fitness-machine-status-characteristic.js');
 
@@ -31,21 +31,21 @@ class FitnessMachineStatusCharacteristic extends Bleno.Characteristic {
     super({
       uuid: '2ADA',
       value: null,
-      properties: ['notify'],
-      descriptors: [
+      properties: ['notify']//,
+      /*descriptors: [
         new Bleno.Descriptor({
           // Client Characteristic Configuration
           uuid: '2902',
           value: Buffer.alloc(2)
         })
-      ]
+      ]*/
     });
     this._updateValueCallback = null;
   }
 
   onSubscribe (maxValueSize, updateValueCallback) {
     logger.debug('client subscribed');
-    this._updateValueCallback = updateValueCallbackM;
+    this._updateValueCallback = updateValueCallback;
     return this.RESULT_SUCCESS;
   }
 
