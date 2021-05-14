@@ -144,10 +144,11 @@ class FitnessControlPoint extends Bleno.Characteristic {
         const crr = data.readUInt8(5) * 0.0001;
         const cw = data.readUInt8(6) * 0.01;
 
-        logger.debug('setIndoorBikeSimulationParameters - windspeed: ' + windspeed);
-        logger.debug('setIndoorBikeSimulationParameters - grade: ' + grade);
-        logger.debug('setIndoorBikeSimulationParameters - crr: ' + crr);
-        logger.debug('setIndoorBikeSimulationParameters - cw: ' + cw);
+        // My logfile is kinda unübersichtlich...
+        //logger.debug('setIndoorBikeSimulationParameters - windspeed: ' + windspeed);
+        //logger.debug('setIndoorBikeSimulationParameters - grade: ' + grade);
+        //logger.debug('setIndoorBikeSimulationParameters - crr: ' + crr);
+        //logger.debug('setIndoorBikeSimulationParameters - cw: ' + cw);
 
         if (this.serverCallback('simulation', windspeed, grade, crr, cw)) {
           callback(this.buildResponse(state, ResultCode.success))

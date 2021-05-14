@@ -38,7 +38,8 @@ class IndoorBikeDataCharacteristic extends Bleno.Characteristic {
       // ignore events with no power and no hr data
       return this.RESULT_SUCCESS;
     }
-    logger.debug('notify');
+    //logger.debug('notify');
+    let logmsg = 'notify';
     const buffer = new Buffer.alloc(8);                 // changed buffer size from 10 to 8 because of deleting hr
     buffer.writeUInt8(0x44, 0);            // 0100 0100 - rpm + power (speed is always on)
     buffer.writeUInt8(0x00, 1) ;           // deleted hr, so all bits are 0
@@ -46,7 +47,8 @@ class IndoorBikeDataCharacteristic extends Bleno.Characteristic {
     const index = 2;
     if ('speed' in event) {
       const speed = event.speed;
-      logger.debug('speed: ' + speed);
+      //logger.debug('speed: ' + speed);
+      logmsg = logmsg + ' | speed: ' + speed;
       buffer.writeUInt16LE(speed * 100, index);          // index starts with 2
 
       // this might have caused the mixup with hr value in power,
@@ -56,7 +58,8 @@ class IndoorBikeDataCharacteristic extends Bleno.Characteristic {
 
     if ('rpm' in event) {
       const rpm = event.rpm;
-      logger.debug('rpm: ' + rpm);
+      //logger.debug('rpm: ' + rpm);
+      logmsg = logmsg + ' | rpm: ' + rpm;
       buffer.writeUInt16LE(rpm * 2, index + 2);   // index is now 4
 
       // this might have caused the mixup with hr value in power,
@@ -66,13 +69,16 @@ class IndoorBikeDataCharacteristic extends Bleno.Characteristic {
 
     if ('power' in event) {
       const power = event.power;
-      logger.debug('power: ' + power);
+      //logger.debug('power: ' + power);
+      logmsg = logmsg + ' | power: ' + power;
       buffer.writeInt16LE(power, index + 4);           // index is now 6
 
       // this might have caused the mixup with hr value in power,
       // if one value is missing, then its shifted to the next 2 bytes
       // index += 2
     }
+
+    logger.debug(logmsg);
 
     // if ('hr' in event) {
     //   const hr = event.hr

@@ -7,7 +7,7 @@ class DaumBLE extends EventEmitter {
   constructor (serverCallback) {
     super();
 
-    this.name = 'DAUM Ergobike 8008 TRS';
+    this.name = 'DAUM Ergobike/Ergolyps';
     process.env['BLENO_DEVICE_NAME'] = this.name;
 
     this.csp = new CyclingPowerService();

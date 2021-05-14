@@ -16,21 +16,13 @@ var dataToSend = null;
 
 const logger = new Logger('server.js');
 
-// instantiate hardware switch for shifting up/down gears
-const Gpio = require('onoff').Gpio;
-const shiftUp = config.gpio.enabled ?
-  new Gpio(4, 'in', 'rising', { debounceTimeout: 10 }) :
-  {watch: () => {}, unexport: () => {}};
-const shiftDown = config.gpio.enabled ?
-  new Gpio(17, 'in', 'rising', { debounceTimeout: 10 }) :
-  {watch: () => {}, unexport: () => {}};
-
 // init global variables
 global.globalspeed_daum = config.globals.speed_daum;
 global.globalrpm_daum = config.globals.rpm_daum;
 global.globalgear_daum = config.globals.gear_daum;
 global.globalpower_daum = config.globals.power_daum;
 global.globalsimpower_daum = config.globals.simpower_daum;
+global.globalpower_last = config.globals.power_daum; // last transmitted power value sent to bike/lyps
 global.globalwindspeed_ble = config.globals.windspeed_ble;
 global.globalgrade_ble = config.globals.grade_ble;
 global.globalcrr_ble = config.globals.crr_ble;    // set once to have simulation available without BLE connected to apps
@@ -60,7 +52,7 @@ server.listen(process.env.PORT || config.server.port, function () {
 const daumUSB = new DaumUSB();
 const daumSIM = new DaumSIM();
 const daumBLE = new DaumBLE(serverCallback);
-const daumObs = daumUSB.open();
+const daumUSBEventListener = daumUSB.open();
 
 process.on('SIGINT', () => {
   logger.debug('detected SIGINT: initiate shutdown...');
@@ -100,7 +92,7 @@ io.on('connection', socket => {
     io.emit('key', '[server.js] - set Program ID: ' + programID);
   });
 
-  socket.on('shiftGear', function (data) {
+  /*socket.on('shiftGear', function (data) {
     // via webserver - set gears - !!!this is in conflict with gpio gear changing, because no read of gears when using gpios
     // NOTE: by changing the gear here, the cockpit switches to gear mode (jog wheel switches only gears from that time)
     let gear = global.globalgear_daum;
@@ -125,7 +117,7 @@ io.on('connection', socket => {
 
     daumUSB.setGear(gear);
     io.emit('raw', '[server.js] - set Gear: ' + gear);
-  });
+  }); */
 
   socket.on('shiftPower', function (data) {
     let power = Math.round(global.globalpower_daum / config.daumRanges.power_factor);
@@ -154,14 +146,14 @@ io.on('connection', socket => {
     io.emit('raw', `[server.js] - set Power to ${power} Watt`);
   });
 
-  socket.on('setGear', function (data) {
+  /*socket.on('setGear', function (data) {
     // via webserver - set gears - !!!this is in conflict with gpio gear changing, because no read of gears when using gpios
     // NOTE: by changing the gear here, the cockpit switches to gear mode (jog wheel switches only gears from that time)
     logger.info('set Gear');
     const gear = data;
     daumUSB.setGear(gear);
     io.emit('raw', '[server.js] - set Gear: ' + gear);
-  });
+  }); */
 
   socket.on('mode', function (data) { 
     // via webserver - switch mode ERG / SIM
@@ -187,64 +179,6 @@ let geargpio = config.gpio.geargpio;         // initialize to start from first g
 const ratio = config.globals.ratio;          // set ratio, to shift multiple gears with the press of a button.
 const minGear = config.globals.minGear;      // lowest gear
 const maxGear = config.globals.maxGear;      // highest gear
-
-shiftUp.watch((err, value) => {
-  if (err) {
-    io.emit('error', '[server.js] - gpio shift up: ' + err);
-    throw err;
-  }
-  if (value) {
-    if (global.globalswitch === 'Power') {
-      // if mode is set to 'power', we increment watt
-      daumUSB.setWattProfile(0); // increment power
-      logger.debug('increment Power');
-      io.emit('raw', '[server.js] - increment Power');
-    } else {
-      // if mode is set to 'gear', we increment gears
-      if (geargpio < maxGear) {
-        // shift n gears at a time, to avoid too much shifting
-        geargpio = geargpio + ratio;
-        daumUSB.setGear(geargpio);
-        
-        logger.debug('Shift to Gear: ' + geargpio);
-        io.emit('raw', '[server.js] - Shift to Gear: ' + geargpio);
-      }
-    }
-  }
-});
-
-process.on('SIGINT', () => {
-  shiftUp.unexport();
-});
-
-shiftDown.watch((err, value) => {
-  if (err) {
-    io.emit('error', '[server.js] - gpio shift down: ' + err);
-    throw err;
-  }
-  if (value) {
-    if (global.globalswitch === 'Power') {
-      // if mode is set to 'power', we decrement watt
-      daumUSB.setWattProfile(1);           // decrement power
-
-      logger.debug('decrement Power');
-      io.emit('raw', '[server.js] - decrement Power')
-    } else {
-      // if mode is set to 'gear', we decrement gears
-      if (geargpio > minGear) {
-        geargpio = geargpio - ratio; // shift n gears at a time, to avoid too much shifting
-        daumUSB.setGear(geargpio);
-        
-        logger.debug('Shift to Gear: ' + geargpio);
-        io.emit('raw', '[server.js] - Shift to Gear: ' + geargpio);
-      }
-    }
-  }
-});
-
-process.on('SIGINT', () => {
-  shiftDown.unexport();
-});
 
 // /////////////////////////////////////////////////////////////////////////
 // Bike information transfer to BLE & Webserver
@@ -301,22 +235,22 @@ daumBLE.on('disconnect', (client) => {
 	//oled.displayBLE('Disconnected');
 });
 
-daumObs.on('error', string => {
+daumUSBEventListener.on('error', string => {
   io.emit('error', '[server.js] - ' + string);
 });
 
-daumObs.on('key', string => {
+daumUSBEventListener.on('key', string => {
   io.emit('key', '[server.js] - ' + string);
 });
 
-daumObs.on('raw', string => {
+daumUSBEventListener.on('raw', string => {
   io.emit('raw', string.toString('hex'));
   
   // emit version number to webserver
   io.emit('version', version);
 });
 
-daumObs.on('data', data => {
+daumUSBEventListener.on('data', data => {
   // get runData from daumUSB
   
   logger.info('data:' + JSON.stringify(data));
@@ -354,12 +288,12 @@ function serverCallback (message, ...args) {
 
     case 'power':
       // ERG Mode - receive control point value via BLE from zwift or other app
-      logger.debug('Bike ERG Mode');
-
+      if (global.globalmode !== 'ERG') {
+        logger.debug('Bike ERG Mode'); // daywalkers additions: to put that once in the logs is sufficient
+      }
       if (args.length > 0) {
         const watt = args[0];
         daumUSB.setPower(watt);
-        logger.debug('Bike in ERG Mode - set Power to: ' + watt + 'W');
         io.emit('raw', '[server.js] - Bike in ERG Mode - set Power to: ' + watt);
         io.emit('control', 'ERG MODE');
         success = true;
@@ -368,7 +302,9 @@ function serverCallback (message, ...args) {
 
     case 'simulation': 
       // SIM Mode - calculate power based on physics
-      logger.debug('Bike in SIM Mode');
+      if (global.globalmode !== 'SIM') {
+        logger.debug('Bike in SIM Mode');
+      }
       const windspeed = Number(args[0]).toFixed(1);
       const grade = Number(args[1]).toFixed(1);
       const crr = Number(args[2]).toFixed(4);
@@ -388,7 +324,7 @@ function serverCallback (message, ...args) {
       daumSIM.physics(global.globalwindspeed_ble, global.globalgrade_ble, global.globalcrr_ble, global.globalcw_ble, global.globalrpm_daum, global.globalspeed_daum, global.globalgear_daum);
       const power = Number(global.globalsimpower_daum).toFixed(0);
 
-      // daumUSB.setPower(power) // if this is used here, then some random power is transmitted to zwift, e.g.: 111 watts / 20sec
+      daumUSB.setPower(power) // --> glaub ich nicht --> if this is used here, then some random power is transmitted to zwift, e.g.: 111 watts / 20sec
 
       io.emit('raw', '[server.js] - Bike in SIM Mode - set Power to : ' + power);
       io.emit('simpower', power);

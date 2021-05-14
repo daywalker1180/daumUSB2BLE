@@ -15,7 +15,7 @@ const priorityLevel = {
   HIGH: 2,
 };
 
-function daumUSB () {
+function daumUSB() {
   const self = this;
   self.port = null;
   self.parser = null;
@@ -34,6 +34,9 @@ function daumUSB () {
 
   /**
    * Filters port used by Daum ergobike and initiates start sequence
+   * "Constructor"
+   * 
+   * Returns: Emitter
    */
   this.open = function () {
     if (config.mock.daumUSB) {
@@ -61,15 +64,15 @@ function daumUSB () {
    */
   this.openPort = (path, vendorId, productId) => {
     logger.debug('openPort - ' + vendorId + '  ' + productId); // RS232 converter Ids
-    logger.info('openPort - Ergobike found on port ' + path);
-    self.emitter.emit('key', '[daumUSB.js] - Ergobike found on port ' + path);
+    //logger.info('openPort - Ergobike found on port ' + path);
+    //self.emitter.emit('key', '[daumUSB.js] - Ergobike found on port ' + path);
 
     if (config.mock.daumUSB) {
       const MockBinding = require('@serialport/binding-mock');
       SerialPort.Binding = MockBinding;
 
       // Create a port and enable the echo and recording.
-      MockBinding.createPort(path, {echo: true, record: true});
+      MockBinding.createPort(path, { echo: true, record: true });
     }
 
     self.port = new SerialPort(path, {
@@ -81,7 +84,7 @@ function daumUSB () {
       rtscts: config.port.flowControl,
     });
 
-    self.parser = self.port.pipe(new InterByteTimeout({interval: config.port.interval}));
+    self.parser = self.port.pipe(new InterByteTimeout({ interval: config.port.interval }));
 
     // try open
     self.internalOpen();
@@ -90,7 +93,11 @@ function daumUSB () {
       logger.debug('openPort - the serialport has been opened!');
       self.parser.on('data', self.readAndDispatch);
       self.port.drain();
-      self.queueProcessor = setInterval(self.processQueue, config.intervals.flushNext); // this is writing the data to the port
+      //self.port.once('drain', self.processQueue); << geht ned
+      setTimeout(self.processQueue, 300);
+
+      //self.queueProcessor = setInterval(self.processQueue, config.intervals.flushNext); // this is writing the data to the port
+
 
       if (gotAdressSuccess === false) {
         // check, otherwise after a restart via webserver, this will run again
@@ -106,6 +113,8 @@ function daumUSB () {
       logger.debug('openPort - the serialport has been closed!')
     });
   };
+
+  
 
   /**
    * Opens port and retries if necessary
@@ -141,7 +150,7 @@ function daumUSB () {
 
           logger.info('start up complete');
           // get run data after successful start up sequence
-          setTimeout(() => self.getRunData(), config.timeouts.start);
+          //setTimeout(() => self.getRunData(), config.timeouts.start);
         }, config.timeouts.start);
       }, config.timeouts.start);
     }
@@ -151,17 +160,17 @@ function daumUSB () {
    * Closes port to Daum ergobike and clears intervals
    */
   this.stop = function () {
-    if(self.getRunDataInterval) {
+    if (self.getRunDataInterval) {
       clearInterval(self.getRunDataInterval);
     }
 
-    if(self.queueProcessor) {
+    if (self.queueProcessor) {
       self.queue = [];
       self.lastCommandId = null;
       clearInterval(self.queueProcessor);
     }
 
-    if(self.port.isOpen) {
+    if (self.port.isOpen) {
       self.port.close();
     }
   };
@@ -184,7 +193,7 @@ function daumUSB () {
    */
   this.readAndDispatch = function (numbers) {
     let states = numbers;
-    const data = {speed: global.globalspeed_daum, rpm: global.globalrpm_daum, gear: global.globalgear_daum, power: global.globalpower_daum};
+    const data = { speed: global.globalspeed_daum, rpm: global.globalrpm_daum, gear: global.globalgear_daum, power: global.globalpower_daum };
     let failure = false;
 
     logger.debug('[IN]: ' + numbers.toString('hex'));
@@ -192,11 +201,11 @@ function daumUSB () {
 
     if (gotAdressSuccess === false) {
       if (checkAdressResponse(numbers)) {
-        self.acknowledgeCommand(config.daumCommands.get_Adress);
         // get the address from the stream by using the index
         daumCockpitAdress = self.prepareCockpitAddress(states);
         logger.info('getAdress - [Adress]: ' + daumCockpitAdress);
         self.emitter.emit('key', '[daumUSB.js] - getAdress - [Adress]: ' + daumCockpitAdress);
+        self.acknowledgeCommand(config.daumCommands.get_Adress);
 
         // address is retrieved, lets set this to true to inform other functions that they can proceed now
         gotAdressSuccess = true;
@@ -211,35 +220,35 @@ function daumUSB () {
       }
     } else {
       // Check first two bytes to assign response data to previously sent command
-      switch(self.getResponseHeader(numbers)) {
+      switch (self.getResponseHeader(numbers)) {
         case config.daumCommands.get_Adress + daumCockpitAdress:
-          self.acknowledgeCommand(config.daumCommands.get_Adress + daumCockpitAdress);
           logger.debug('get cockpit address response detected');
+          self.acknowledgeCommand(config.daumCommands.get_Adress + daumCockpitAdress);
           break;
 
         case config.daumCommands.check_Cockpit + daumCockpitAdress:
-          self.acknowledgeCommand(config.daumCommands.check_Cockpit + daumCockpitAdress);
           logger.debug('check cockpit response detected');
+          self.acknowledgeCommand(config.daumCommands.check_Cockpit + daumCockpitAdress);
           break;
 
         case config.daumCommands.set_Gear + daumCockpitAdress:
-          self.acknowledgeCommand(config.daumCommands.set_Gear + daumCockpitAdress);
           logger.debug('set gear response detected');
+          self.acknowledgeCommand(config.daumCommands.set_Gear + daumCockpitAdress);
           break;
 
         case config.daumCommands.set_Watt + daumCockpitAdress:
-          self.acknowledgeCommand(config.daumCommands.set_Watt + daumCockpitAdress);
           logger.debug('set power response detected');
+          self.acknowledgeCommand(config.daumCommands.set_Watt + daumCockpitAdress);
           break;
 
         case config.daumCommands.set_Prog + daumCockpitAdress:
-          self.acknowledgeCommand(config.daumCommands.set_Prog + daumCockpitAdress);
           logger.debug('set program response detected');
+          self.acknowledgeCommand(config.daumCommands.set_Prog + daumCockpitAdress);
           break;
 
         case config.daumCommands.run_Data + daumCockpitAdress:
-          self.acknowledgeCommand(config.daumCommands.run_Data + daumCockpitAdress);
           self.startUpComplete = true;
+          self.acknowledgeCommand(config.daumCommands.run_Data + daumCockpitAdress);
 
           if (checkRunData(states)) {
             // const cadence = (states[6])
@@ -285,7 +294,7 @@ function daumUSB () {
             let power = 0;
             // power - 25 watt will always be transmitted by daum;
             // set to 0 if rpm is 0 to avoid rolling if stand still in applications like zwift or fullgaz
-            if (global.globalmode !== 'ERG' && rpm === 0) {
+            if (/*global.globalmode !== 'ERG' && */ rpm === 0) {  // daywalker: Why only in ERG mode...?!
               data.power = power;
               global.globalpower_daum = data.power; // global variables used, because I cannot code ;)
             } else {
@@ -307,10 +316,10 @@ function daumUSB () {
             // the actual speed on the display and the calculated one will be the same
             // DAUM: the ratio starts from 42:24 and ends at 53:12; see TRS_8008 Manual page 16
             // const gearRatio = config.gears.ratioLow + (data.gear - 1) * config.gears.ratioHigh
-            const gearRatio = config.gearbox['g' + data.gear];                      // 1,75 + ( gl_Gang -1 )* 0.098767
-            const distance = gearRatio * config.gears.circumference;                // distance in cm per rotation
-            const speed = data.rpm * distance * config.gears.speedConversion;       // speed in km/h
-            // const speed = (states[7])
+            //const gearRatio = config.gearbox['g' + data.gear];                      // 1,75 + ( gl_Gang -1 )* 0.098767
+            //const distance = gearRatio * config.gears.circumference;                // distance in cm per rotation
+            //const speed = data.rpm * distance * config.gears.speedConversion;       // speed in km/h
+            const speed = (states[7])
 
             if (!isNaN(speed) && (speed >= config.daumRanges.min_speed && speed <= config.daumRanges.max_speed)) {
               // reduce number of decimals after calculation to 1
@@ -347,6 +356,7 @@ function daumUSB () {
           }
       }
     }
+    self.scheduleQueueProcessing();
   };
 
   /**
@@ -363,12 +373,13 @@ function daumUSB () {
         self.runData();
       }
     }, config.intervals.runData);
+
   };
 
   /**
    * Writes command to port
    */
-  this.write = function (command, priority=priorityLevel.LOW) {
+  this.write = function (command, priority = priorityLevel.LOW) {
     self.queue.push({
       id: Math.floor(Math.random() * 1000) + 1,
       command: command,
@@ -376,9 +387,31 @@ function daumUSB () {
       retries: 0,
       ack: false
     });
+    self.scheduleQueueProcessing();
   };
 
+  /**
+   * Schedule the processing of the send queue if time is not already running
+   */
+  this.scheduleQueueProcessing = () => {
+    if(!self.queueProcessor) {
+      self.queueProcessor = setTimeout(() => {
+        self.processQueue();
+      }, 300);
+    }
+  };
+
+
+  /**
+   * Process the send queue
+   * is called as soon as the last ACK has been received
+   * 
+   * if there are no pending commands to process continously fetch the run data from
+   * the bike/lyps to forward it to Zwift/Fullgaz via BLE
+   * 
+   */
   this.processQueue = () => {
+    self.queueProcessor = null;
     let element = self.queue.length > 0 ? self.queue[0] : null;
 
     if (element && element.ack) {
@@ -393,7 +426,7 @@ function daumUSB () {
         logger.warn('last command has not been acknowledged. retrying...');
 
         element.retries += element.priority === priorityLevel.LOW ? config.queue.max_retries : 1;
-        self.queue[0] = {...self.queue[0], retries: element.retries};
+        self.queue[0] = { ...self.queue[0], retries: element.retries };
 
         if (element.retries > config.queue.max_retries) {
           if (self.getResponseHeader(self.queue[0].command) === (config.daumCommands.get_Adress + daumCockpitAdress)) {
@@ -417,7 +450,7 @@ function daumUSB () {
     } else {
       logger.debug('there is nothing in the queue.');
       // TODO: get run data, because we have some time
-      // self.runData();
+      self.runData();
     }
 
     if (self.queue.length >= config.queue.max_commands) {
@@ -426,12 +459,28 @@ function daumUSB () {
     }
   };
 
+  /**
+   * Mark a command in the queue as "completed" upon receipt of an ACK for it
+   */
   this.acknowledgeCommand = (command) => {
+    let idx;
     if (self.queue.length > 0) {
-      // acknowledge the right commands...
-      const idx = self.queue.findIndex((element) => {
-        return self.getResponseHeader(element.command) === command;
-      });
+      // acknowledge the right command...
+      
+      // command for getting the cockpit address does not include the cockpit address 
+      // but the answer does!
+      // [OUT] = 11 || [IN] = 1100
+      if (gotAdressSuccess === false) { 
+        idx = self.queue.findIndex((element) => {
+          return self.getResponseHeader(element.command) === command + daumCockpitAdress; 
+        });
+      } else {
+        // regular command
+        // cockpit address is also stored in element.command, if of if not this makes sense
+        idx = self.queue.findIndex((element) => {
+          return self.getResponseHeader(element.command) === command;
+        });
+      }
 
       if (idx >= 0) {
         logger.debug(`ack received - set ${idx + 1}. '${command}' command from queue as done`);
@@ -447,7 +496,7 @@ function daumUSB () {
   /**
    * Sets Daum command - general function for sending data
    */
-  this.setDaumCommand = function (command, adress, sendData, priority=priorityLevel.LOW) {
+  this.setDaumCommand = function (command, adress, sendData, priority = priorityLevel.LOW) {
     if (command !== config.daumCommands.get_Adress) {
       if (gotAdressSuccess === true) {
         logger.debug('set command [0x' + command + ']: ' + sendData);
@@ -520,7 +569,16 @@ function daumUSB () {
     // round up and to step of 5 to match daum spec and devide by 5
     const ergopower = Math.round(power / config.daumRanges.power_factor);
 
-    self.setDaumCommand(config.daumCommands.set_Watt, daumCockpitAdress, ergopower, priorityLevel.HIGH);
+    // only change the power value if there is a noticeable deviation
+    // Zwift in ERG Mode is flooding the BLE interface with power msg
+    if(power < (global.globalpower_last - 5) || power > (global.globalpower_last + 5) ) {
+      self.setDaumCommand(config.daumCommands.set_Watt, daumCockpitAdress, ergopower, priorityLevel.HIGH);
+      logger.debug('Recvd new power from BLE - change Power from: ' + global.globalpower_last + ' W  to: ' + power + ' W');
+      global.globalpower_last = power;
+    } else {
+      logger.debug('Recvd new power from BLE - SKIPPING - change Power from: ' + global.globalpower_last + ' W  to: ' + power + ' W');
+    }
+
   };
 
   /**
@@ -557,7 +615,8 @@ function daumUSB () {
         address = '0' + address;
       }
     } else {
-      logger.warn(`preparation of cockpit address failed. using ${daumCockpitAdress} for it.`);
+      //logger.warn(`preparation of cockpit address failed. using ${daumCockpitAdress} for it.`);
+      // cockpit address is already discovered and set here, this is no warning nor an error.
     }
 
     return address;

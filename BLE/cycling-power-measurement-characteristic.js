@@ -50,6 +50,8 @@ class CyclingPowerMeasurementCharacteristic extends Bleno.Characteristic {
       // ignore events with no power and no crank data
       return this.RESULT_SUCCESS;
     }
+    let logmsg;
+    logmsg = 'notify';
     const buffer = new Buffer.alloc(8);
     // flags
     // 00000001 - 1   - 0x001 - Pedal Power Balance Present
@@ -65,15 +67,19 @@ class CyclingPowerMeasurementCharacteristic extends Bleno.Characteristic {
 
     if ('power' in event) {
       const power = event.power;
-      logger.debug('power: ' + power);
+      //logger.debug('power: ' + power);
+      logmsg = logmsg + ' | power: ' + power;
       buffer.writeInt16LE(power, 2);
     }
 
     if ('rpm' in event) {
       const rpm = event.rpm;
-      logger.debug('rpm: ' + event.rpm);
+      //logger.debug('rpm: ' + event.rpm);
+      logmsg = logmsg + ' | rpm: ' + rpm;
       buffer.writeUInt16LE(rpm, 4);
     }
+
+    logger.debug(logmsg);
 
     if (this._updateValueCallback) {
       this._updateValueCallback(buffer);
