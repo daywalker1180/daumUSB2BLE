@@ -303,9 +303,11 @@ function daumUSB() {
                 if (failure || power >= config.daumRanges.power_threshold) {
                   logger.debug('power_threshold overflow');
                   data.power = global.globalpower_daum;  // let's take the last known value
+                  //data.power = global.globalpower_last;
                 } else {
                   // multiply with factor 5, see Daum spec
                   data.power = power * config.daumRanges.power_factor;
+                  //data.power = global.globalpower_last;
                   global.globalpower_daum = data.power;
                 }
               }
@@ -571,10 +573,10 @@ function daumUSB() {
 
     // only change the power value if there is a noticeable deviation
     // Zwift in ERG Mode is flooding the BLE interface with power msg
-    if(power < (global.globalpower_last - 5) || power > (global.globalpower_last + 5) ) {
+    if((power < (global.globalpower_last - 2)) || (power > (global.globalpower_last + 2))) {
       self.setDaumCommand(config.daumCommands.set_Watt, daumCockpitAdress, ergopower, priorityLevel.HIGH);
       logger.debug('Recvd new power from BLE - change Power from: ' + global.globalpower_last + ' W  to: ' + power + ' W');
-      global.globalpower_last = power;
+      global.globalpower_last = ergopower * config.daumRanges.power_factor;
     } else {
       logger.debug('Recvd new power from BLE - SKIPPING - change Power from: ' + global.globalpower_last + ' W  to: ' + power + ' W');
     }
